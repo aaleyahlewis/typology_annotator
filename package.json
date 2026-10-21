@@ -1,0 +1,15 @@
+{
+  "name": "typology-annotator",
+  "private": true,
+  "description": "Front-end assets and browser tests for the typology annotator",
+  "scripts": {
+    "postinstall": "node scripts/copy_editor.cjs",
+    "test:e2e": "node tests/e2e/flow.cjs"
+  },
+  "dependencies": {
+    "label-studio-frontend": "1.7.1"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

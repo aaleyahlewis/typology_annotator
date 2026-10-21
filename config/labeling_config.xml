@@ -1,0 +1,213 @@
+<View>
+  <!-- CHATGPT_CONVERSATION_IMPORT: tasks come from chatgpt_to_labelstudio.py (paragraphs format, the default),
+       which writes the conversation to data.dialogue with message_id, index, role, author, text. -->
+  <Style>
+    .typ-layout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; width: 100%; box-sizing: border-box; }
+    .typ-convo { flex: 1 1 380px; min-width: 300px; max-width: 100%; box-sizing: border-box; background: #ffffff; color: #0d0d0d; border-radius: 12px; padding: 16px; font-family: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .typ-side { flex: 1 1 280px; min-width: 260px; max-width: 100%; box-sizing: border-box; padding: 0 8px; overflow-wrap: anywhere; }
+    .typ-panel { border-left: 4px solid #2b5797; padding: 8px 12px; margin-bottom: 16px; }
+    .typ-ai { border-left: 4px dashed #8a3b12; }
+    .typ-conv { border-left: 4px dotted #4a6b2b; margin-top: 24px; }
+    .typ-def { font-size: 0.9em; opacity: 0.85; }
+    .typ-side textarea { width: 100%; box-sizing: border-box; }
+    .typ-layout *:focus-visible { outline: 3px solid #1a73e8; outline-offset: 2px; }
+
+    /* ChatGPT look for Paragraphs layout="dialogue".
+       Label Studio colors each speaker from a hash of its name: "You" = #bfb272 (191, 178, 114),
+       "ChatGPT" = #72bfbc (114, 191, 188). These selectors rely on the author names set by the converter. */
+    .typ-convo [class*="phrase--"] { display: block !important; box-sizing: border-box; margin: 0 0 18px 0 !important; line-height: 1.6; font-size: 15px; border: 0 !important; box-shadow: none !important; }
+    .typ-convo [class*="dialoguetext--"] { white-space: pre-wrap; cursor: text; }
+    .typ-convo [class*="dialoguename--"] { display: block; width: fit-content; background: transparent !important; padding: 0 0 2px 0 !important; margin: 0 !important; font-size: 12px; font-weight: 600; color: #5d5d5d !important; }
+    .typ-convo [class*="dialoguename--"] span { background: transparent !important; }
+    /* Hide audio-transcript extras that do not apply to chat logs: empty timestamps, author filter,
+       and the whole-message button (participants highlight instead). */
+    .typ-convo [class*="time--"],
+    .typ-convo [class*="authorFilter--"],
+    .typ-convo [class*="wrapper_header--"],
+    .typ-convo [class*="selectAllBtnWrapper--"] { display: none !important; }
+    .typ-convo [class*="titleWrapper--"] { display: block !important; }
+
+    .typ-convo [class*="phrase--"][style*="191, 178, 114"],
+    .typ-convo [class*="phrase--"][style*="#bfb272"] {
+      margin-left: auto !important; max-width: 75%; width: fit-content;
+      background: #f4f4f4 !important; border-radius: 18px !important; padding: 10px 16px !important;
+    }
+    .typ-convo [class*="phrase--"][style*="191, 178, 114"] [class*="dialoguename--"],
+    .typ-convo [class*="phrase--"][style*="#bfb272"] [class*="dialoguename--"] { margin-left: auto !important; }
+
+    .typ-convo [class*="phrase--"][style*="114, 191, 188"],
+    .typ-convo [class*="phrase--"][style*="#72bfbc"] {
+      margin-right: auto !important; max-width: 100%; width: 100%;
+      background: transparent !important; border-radius: 0 !important; padding: 4px 0 !important;
+    }
+  </Style>
+
+  <View className="typ-layout">
+
+    <View className="typ-convo">
+      <Header value="Your conversation" size="4"/>
+      <Text name="how_to" value="To annotate: 1) choose 'My words' (key 1) or 'AI's words' (key 2), 2) highlight the exact text with your mouse. Choose the label again before each new highlight. To annotate a whole message, highlight all of it. Highlights can overlap."/>
+
+      <!-- TYPOLOGY_SPAN_SELECTION: native text-span regions with start/end message index,
+           startOffset/endOffset and the highlighted text -->
+      <ParagraphLabels name="passage_type" toName="dialogue" showInline="true">
+        <Label value="My words" hotkey="1" background="#2b5797"/>
+        <Label value="AI's words" hotkey="2" background="#8a3b12"/>
+      </ParagraphLabels>
+
+      <Paragraphs name="dialogue" value="$dialogue" layout="dialogue"
+                  nameKey="author" textKey="text" savetextresult="yes"/>
+    </View>
+
+    <View className="typ-side">
+
+      <View visibleWhen="no-region-selected" className="typ-panel">
+        <Header value="How to annotate" size="4"/>
+        <Text name="instr" value="Highlight words in your messages or the AI's responses that you want to comment on. Then click the highlight in the Regions list, then answer any questions you like. For written answers, press Add (or Shift + Enter) to save them. Every question is optional, and you do not need to annotate every message. To edit an annotation, select it in the Regions list. To delete it, select it and press Backspace or use the trash icon."/>
+      </View>
+
+      <!-- TYPOLOGY_USER_ANNOTATIONS -->
+      <View visibleWhen="region-selected" whenLabelValue="My words" className="typ-panel">
+        <Header value="Your words" size="4"/>
+
+        <!-- TYPOLOGY_OPEN_ENDED_RESPONSES -->
+        <Text name="q_user_accessibility_goal" value="WHY: What were you trying to accomplish with AI? What accessibility or communication support were you seeking?"/>
+        <TextArea name="user_accessibility_goal" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+
+        <Text name="q_user_why" value="WHY: Why did you communicate or present yourself this way? Were there expectations, accessibility barriers, or other circumstances that influenced your decision?"/>
+        <TextArea name="user_why" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+
+        <Text name="q_user_where" value="WHERE: In what communication context was this?"/>
+        <Choices name="user_where" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Professional / Workplace"/>
+          <Choice value="Educational"/>
+          <Choice value="Friendship / Social"/>
+          <Choice value="Romantic"/>
+          <Choice value="Familial"/>
+          <Choice value="Community"/>
+          <Choice value="Other"/>
+          <Choice value="Not sure / Not applicable"/>
+        </Choices>
+        <TextArea name="user_where_other" toName="dialogue" perRegion="true" rows="1" maxSubmissions="1"
+                  placeholder="If Other, please describe (optional)"/>
+
+        <Text name="q_user_how_site" value="HOW: Where did you adjust your communication or self-presentation?"/>
+        <Text name="def_how_site" className="typ-def" value="With AI = you adjusted how you communicated with the AI itself. Through AI = you used AI to shape communication meant for another person or audience. Layered / Multi-site = both."/>
+        <Choices name="user_how_site" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Interacting with AI"/>
+          <Choice value="Interacting through AI"/>
+          <Choice value="Layered / Multi-site"/>
+          <Choice value="Other / Unclear"/>
+        </Choices>
+
+        <Text name="q_user_how_strategy" value="HOW: What did you do?"/>
+        <Choices name="user_how_strategy" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Adjusting language or linguistic expression"/>
+          <Choice value="Adjusting tone or communication style"/>
+          <Choice value="Modifying self-presentation"/>
+          <Choice value="Managing identity disclosure"/>
+          <Choice value="Changing communication modality"/>
+          <Choice value="Reformulating a request"/>
+          <Choice value="Other"/>
+          <Choice value="Not sure / Not applicable"/>
+        </Choices>
+
+        <Text name="q_user_strategy_explanation" value="Is there anything else you would like to explain about how or why you communicated this way?"/>
+        <TextArea name="user_strategy_explanation" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+      </View>
+
+      <!-- TYPOLOGY_AI_ANNOTATIONS
+           Observable behavior (ai_behavior) is stored separately from interpretation (ai_role). -->
+      <View visibleWhen="region-selected" whenLabelValue="AI's words" className="typ-panel typ-ai">
+        <Header value="AI's words" size="4"/>
+
+        <Text name="q_ai_behavior" value="What did the AI do?"/>
+        <Choices name="ai_behavior" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Preserved my intended language or expression"/>
+          <Choice value="Modified my language or tone"/>
+          <Choice value="Helped organize or structure my communication"/>
+          <Choice value="Suggested changes to my communication"/>
+          <Choice value="Introduced assumptions about me or my communication"/>
+          <Choice value="Ignored or misunderstood my preferences"/>
+          <Choice value="Changed or omitted important meaning"/>
+          <Choice value="Provided the support I requested"/>
+          <Choice value="Did not provide the support I requested"/>
+          <Choice value="Other"/>
+          <Choice value="Not sure / Not applicable"/>
+        </Choices>
+
+        <Text name="q_ai_behavior_explanation" value="What did the AI do in this response? Did anything stand out to you?"/>
+        <TextArea name="ai_behavior_explanation" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+
+        <!-- TYPOLOGY_OPTIONAL_AI_ROLE: optional, multi-select, never inferred or auto-filled -->
+        <Text name="q_ai_role" value="(Optional) How did the AI shape your communication or self-presentation during this interaction? You may consider earlier and later messages."/>
+        <Text name="def_ai_role" className="typ-def" value="Supporting: you started adjusting, and AI honored your goal. Facilitating: AI started the adjustment in a way that helped your intended outcome. Undermining: you started adjusting, but AI ignored, obstructed, or undermined your goal. Necessitating: you did not plan to adjust, but AI's behavior or limits made you adjust to get the support you needed."/>
+        <Choices name="ai_role" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Supporting"/>
+          <Choice value="Facilitating"/>
+          <Choice value="Undermining"/>
+          <Choice value="Necessitating"/>
+          <Choice value="Mixed / Multiple roles"/>
+          <Choice value="Unclear / Not applicable"/>
+        </Choices>
+
+        <Text name="q_ai_role_explanation" value="Why did you characterize the AI's role this way? How did its behavior affect what you were trying to accomplish?"/>
+        <TextArea name="ai_role_explanation" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+
+        <Text name="q_ai_benefits" value="OUTCOMES: Benefits"/>
+        <Choices name="ai_benefits" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Reduced cognitive or temporal effort"/>
+          <Choice value="Reduced emotional or social risks"/>
+          <Choice value="Expanded communication or participation"/>
+          <Choice value="Helped preserve my intended expression"/>
+          <Choice value="Increased control over my communication"/>
+          <Choice value="Helped manage identity disclosure"/>
+          <Choice value="Other"/>
+          <Choice value="No benefits experienced"/>
+        </Choices>
+
+        <Text name="q_ai_challenges" value="OUTCOMES: Challenges"/>
+        <Choices name="ai_challenges" toName="dialogue" perRegion="true" choice="multiple">
+          <Choice value="Required additional effort or revisions"/>
+          <Choice value="Misrepresented my identity or expression"/>
+          <Choice value="Introduced unwanted assumptions"/>
+          <Choice value="Did not account for my accessibility needs"/>
+          <Choice value="Changed my intended meaning"/>
+          <Choice value="Created disclosure or privacy concerns"/>
+          <Choice value="Reduced my control or agency"/>
+          <Choice value="Other"/>
+          <Choice value="No challenges experienced"/>
+        </Choices>
+
+        <Text name="q_ai_outcome_explanation" value="How did this response affect what you were trying to accomplish? Did it help, create difficulties, or both?"/>
+        <TextArea name="ai_outcome_explanation" toName="dialogue" perRegion="true" rows="3" maxSubmissions="1"/>
+
+        <Text name="q_ai_followup_adjustment" value="Did you change your approach after this response?"/>
+        <Choices name="ai_followup_adjustment" toName="dialogue" perRegion="true" choice="single-radio">
+          <Choice value="Yes"/>
+          <Choice value="No"/>
+          <Choice value="I intended to but did not"/>
+          <Choice value="Not sure / Not applicable"/>
+        </Choices>
+        <TextArea name="ai_followup_explanation" toName="dialogue" perRegion="true" rows="2" maxSubmissions="1"
+                  placeholder="If you changed your approach after this response, what did you change and why?"/>
+      </View>
+
+      <!-- TYPOLOGY_ANNOTATION_VALIDATION: no control is required="true", so a highlight
+           can be saved with any subset of answers, including no AI role. -->
+
+      <!-- TYPOLOGY_CONVERSATION_CONTEXT: no perRegion, so each answer is saved once per conversation -->
+      <View className="typ-panel typ-conv">
+        <Header value="About this conversation (optional)" size="4"/>
+        <Text name="q_conversation_accessibility_context" value="What accessibility or communication support were you seeking in this conversation?"/>
+        <TextArea name="conversation_accessibility_context" toName="dialogue" rows="3" maxSubmissions="1"/>
+        <Text name="q_conversation_additional_context" value="Is there anything important about your circumstances, intended audience, communication preferences, or experiences that is not visible in the conversation?"/>
+        <TextArea name="conversation_additional_context" toName="dialogue" rows="3" maxSubmissions="1"/>
+      </View>
+
+      <!-- TYPOLOGY_DATA_EXPORT
+           passage_type results hold start/end (indexes into data.dialogue), startOffset/endOffset and text.
+           Per-region answers share that region's id. Look up message_id and role via data.dialogue[start]. -->
+    </View>
+  </View>
+</View>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Conversations</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <strong>Conversation study</strong>
+    <span><span id="who" class="status"></span> <button id="logout" class="secondary">Sign out</button></span>
+  </div>
+  <main class="page">
+    <h1>Your conversations</h1>
+    <p class="lead">Add a ChatGPT conversation you'd like to annotate, then open it to start.</p>
+
+    <section class="card" aria-labelledby="list-h">
+      <h2 id="list-h" style="margin-top:0">Added conversations</h2>
+      <ul id="tasks" class="plain"></ul>
+      <p id="empty" class="muted" hidden>You haven't added a conversation yet.</p>
+    </section>
+
+    <section class="card" aria-labelledby="upload-h">
+      <h2 id="upload-h" style="margin-top:0">Add from your ChatGPT export</h2>
+      <p class="muted">In ChatGPT go to Settings → Data controls → Export data. Choose the .zip you receive by email (or the conversations.json inside it). Your file stays on this computer: only the conversation you pick is sent to the study.</p>
+      <label for="file">Export file</label>
+      <input id="file" type="file" accept=".zip,.json,application/json,application/zip">
+      <p id="file-error" class="error" role="alert"></p>
+      <div id="pick" hidden>
+        <label for="search">Find a conversation</label>
+        <input id="search" type="text" placeholder="Type part of the title">
+        <fieldset class="picker" id="choices" style="margin-top:8px"><legend class="muted">Choose one conversation</legend></fieldset>
+        <div class="row"><button id="add" disabled>Add this conversation</button></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="link-h" id="link-section">
+      <h2 id="link-h" style="margin-top:0">Or add from a share link</h2>
+      <p class="muted">In ChatGPT open the conversation, choose Share → Create link, and paste it here. After it's added, you can delete the link in ChatGPT (Settings → Data controls → Shared links).</p>
+      <label for="url">Share link</label>
+      <input id="url" type="url" placeholder="https://chatgpt.com/share/...">
+      <div class="row"><button id="add-link">Add from link</button></div>
+      <p id="link-status" class="status" role="status"></p>
+    </section>
+  </main>
+  <script type="module" src="/static/conversations.js"></script>
+</body>
+</html>

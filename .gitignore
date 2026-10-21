@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+app/static/lsf/
+data/
+*.sqlite3
+.env
+typology_export*.json
+test-results/

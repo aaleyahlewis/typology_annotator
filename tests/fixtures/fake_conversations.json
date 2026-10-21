@@ -1,0 +1,188 @@
+[
+  {
+    "title": "Email to boss about 1:1 format (FAKE TEST DATA)",
+    "id": "fake-conv-001",
+    "conversation_id": "fake-conv-001",
+    "create_time": 1760000000.0,
+    "update_time": 1760000400.0,
+    "current_node": "msg-7",
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": [
+          "sys"
+        ]
+      },
+      "sys": {
+        "id": "sys",
+        "parent": "root",
+        "children": [
+          "msg-1"
+        ],
+        "message": {
+          "id": "sys",
+          "author": {
+            "role": "system"
+          },
+          "create_time": null,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              ""
+            ]
+          },
+          "metadata": {
+            "is_visually_hidden_from_conversation": true
+          }
+        }
+      },
+      "msg-1": {
+        "id": "msg-1",
+        "parent": "sys",
+        "children": [
+          "msg-2"
+        ],
+        "message": {
+          "id": "msg-1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000045.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I need to email my boss to ask if I can move our weekly 1:1 from in person to a written check-in. Here's my draft:\n\n\"Hi Dana, the in-person 1:1s don't work for me. I can't process things on the spot and I end up forgetting everything. Can we just do it over email from now on? Thanks.\"\n\nPeople tell me I come across as blunt. Can you make it sound more professional without changing what I'm asking for?"
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-2": {
+        "id": "msg-2",
+        "parent": "msg-1",
+        "children": [
+          "msg-3"
+        ],
+        "message": {
+          "id": "msg-2",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000090.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Of course! Here's a more polished version:\n\n\"Hi Dana,\n\nI hope you're doing well! I wanted to reach out about our weekly 1:1s. I've been reflecting on how I work best, and I think I might be more effective if we tried a written check-in format instead. Would you be open to experimenting with this for a few weeks? I'm happy to discuss further whenever is convenient for you.\n\nBest,\nSam\"\n\nThis version keeps your request but frames it positively and gives Dana room to agree."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-3": {
+        "id": "msg-3",
+        "parent": "msg-2",
+        "children": [
+          "msg-4"
+        ],
+        "message": {
+          "id": "msg-3",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000135.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "This is better but it sounds kind of fake and too cheerful, like it isn't me. Also you took out the part about processing things on the spot. That's the actual reason. I don't want to hide it, but I also don't want to make a big deal about being autistic in this email."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-4": {
+        "id": "msg-4",
+        "parent": "msg-3",
+        "children": [
+          "msg-5"
+        ],
+        "message": {
+          "id": "msg-4",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000180.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "That makes sense. Here's a version that's closer to your own voice and keeps your reason, without disclosing more than you want to:\n\n\"Hi Dana,\n\nCould we switch our weekly 1:1 to a written check-in? I process information better in writing than in real-time conversation, and I often lose track of details we discuss in person. A written format would help me follow up more reliably.\n\nI'm happy to try it for a few weeks and see how it goes.\n\nThanks,\nSam\"\n\nIt's direct but polite, and it states your need as how you work best rather than as a diagnosis."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-5": {
+        "id": "msg-5",
+        "parent": "msg-4",
+        "children": [
+          "msg-6"
+        ],
+        "message": {
+          "id": "msg-5",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000225.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Ok yes. That sounds like me but less harsh. Can you make \"I often lose track of details\" sound less like I'm bad at my job?"
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-6": {
+        "id": "msg-6",
+        "parent": "msg-5",
+        "children": [
+          "msg-7"
+        ],
+        "message": {
+          "id": "msg-6",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000270.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Sure. You could replace that sentence with:\n\n\"A written format lets me take in details fully and respond more thoughtfully.\"\n\nThis frames it around the benefit to your work instead of a shortcoming."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "msg-7": {
+        "id": "msg-7",
+        "parent": "msg-6",
+        "children": [],
+        "message": {
+          "id": "msg-7",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000315.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Perfect, thank you. I'm going to send it."
+            ]
+          },
+          "metadata": {}
+        }
+      }
+    }
+  }
+]

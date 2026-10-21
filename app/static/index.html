@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversation Study Sign In</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="page">
+    <h1>Sign in</h1>
+    <p class="lead">Use the study ID and access code the research team gave you.</p>
+    <form id="login" class="card" novalidate>
+      <label for="study_id">Study ID</label>
+      <input id="study_id" name="study_id" type="text" autocomplete="username" required>
+      <label for="code">Access code</label>
+      <input id="code" name="code" type="password" autocomplete="current-password" required>
+      <div class="row"><button type="submit">Sign in</button></div>
+      <p id="error" class="error" role="alert"></p>
+    </form>
+  </main>
+  <script type="module" src="/static/login.js"></script>
+</body>
+</html>
