@@ -38,21 +38,27 @@ but **off by default**. See [Share links](#share-links-experimental).
 
 ## Run it locally
 
-Requires Python 3.11+ and Node 18+.
+Requires Python 3.11+ and Node 18+. Run each line on its own, from inside the
+project folder. (zsh doesn't treat `#` as a comment when you paste, so don't paste
+comments.)
 
 ```bash
+git clone https://github.com/aaleyahlewis/typology_annotator.git
+cd typology_annotator
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-dev.txt
-npm install                      # also copies the editor into app/static/lsf
-
+npm install
 export SESSION_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 export ADMIN_TOKEN=$(python3 -c "import secrets; print(secrets.token_hex(24))")
-.venv/bin/python scripts/manage.py add-participant P01     # prints an access code
+.venv/bin/python scripts/manage.py add-participant P01
 .venv/bin/uvicorn app.main:app --port 8765
 ```
 
-Open http://localhost:8765 and sign in as `P01` with the printed code. A fake
-export to try is in [`tests/fixtures/fake_conversations.json`](tests/fixtures/fake_conversations.json).
+`npm install` also copies the annotation editor into `app/static/lsf`.
+`add-participant` prints an access code. Then open http://localhost:8765 and sign in
+as `P01` with that code. A fake export to try is in
+[`tests/fixtures/fake_conversations.json`](tests/fixtures/fake_conversations.json).
+Stop the server with Ctrl + C.
 
 ## Researcher tasks
 
@@ -133,9 +139,12 @@ tests/e2e/flow.cjs           full participant flow in a real browser (Playwright
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest -q          # server: auth, isolation, validation, export
-scripts/run_e2e.sh                     # starts a throwaway server and runs the browser flow
+.venv/bin/python -m pytest -q
+scripts/run_e2e.sh
 ```
+
+The first runs the server tests (auth, isolation, validation, export). The second starts a
+throwaway server and runs the browser flow.
 
 The browser test signs in, uploads an export zip, adds a conversation, checks the
 ChatGPT styling, checks that clicking a message creates nothing, makes user, AI and
