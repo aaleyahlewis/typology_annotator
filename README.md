@@ -106,6 +106,7 @@ your process manager; never commit it):
 | `LABEL_STUDIO_PROJECT_ID` | ✓ | the study project's ID |
 | `ADMIN_TOKEN` | for HTTP export | bearer token for `/admin/export` |
 | `TYPOLOGY_DB` | | SQLite path (default `data/typology.sqlite3`) |
+| `EXPORT_DIR` | | where submitted conversations are exported automatically (default `data/exports`; empty turns it off) |
 | `SCHEMA_VERSION` | | recorded on every conversation and export (default `1.0`) |
 | `HTTPS_ONLY` | | default `1`: cookies only over HTTPS. `0` only with `APP_ENV=test` |
 | `SHARE_LINK_BROWSER_FALLBACK` | | `1` to read pages in headless Chromium when they contain no embedded data (needs `pip install -r requirements-browser.txt` and `playwright install chromium`) |
@@ -149,6 +150,27 @@ Put it behind HTTPS (Caddy, nginx, or your institution's platform). Run a single
   that need review.
 
 ## Research export
+
+### Automatic (after each participant submits)
+
+When a participant clicks **Submit**, or **Update** after editing, the backend writes the
+export for that conversation, with no researcher action needed:
+
+```
+EXPORT_DIR/
+  typology_export.json                  every submitted conversation, rebuilt on each submit
+  conversations/P01__conv_….json        one file per conversation (participant__conversation)
+```
+
+- Only submitted work is exported; autosaved drafts are not. If the participant edits and
+  presses **Update** again, their file and the combined file are rewritten.
+- Removing a conversation removes its file and updates the combined file.
+- Files are written atomically (never half-written) and readable only by the server's user (600).
+- An export problem (for example a full disk) never undoes the participant's save; it's
+  logged and recorded in the audit log, and `manage.py export` regenerates everything.
+- Put `EXPORT_DIR` on IRB-approved, backed-up storage, or point it at a synced research folder.
+
+### On demand
 
 `manage.py export` or `GET /admin/export` with `Authorization: Bearer $ADMIN_TOKEN`
 (see [`app/export.py`](app/export.py), marker `TYPOLOGY_DATA_EXPORT`). One entry per conversation:
@@ -222,17 +244,19 @@ Put it behind HTTPS (Caddy, nginx, or your institution's platform). Run a single
 LS_URL=http://localhost:8080 LS_TOKEN=<legacy token> scripts/run_e2e.sh
 ```
 
-- **pytest (97 tests)** with an in-memory Label Studio: URL allow-list and redirect blocking,
+- **pytest (103 tests)** with an in-memory Label Studio: URL allow-list and redirect blocking,
   both page formats, text preservation (whitespace, code, emoji, Arabic, Chinese), branch and
   hidden-message handling, incomplete-extraction warnings, normalization and validation,
   annotation-result validation, sign-in and lockout, CSRF, participant isolation, duplicate
   and idempotent imports, Label Studio failures and retry without duplicate tasks, save
-  conflicts, failed saves not reported as saved, deletion, export validation.
-- **`scripts/run_e2e.sh` (27 checks)** against a **real Label Studio server**: creates a
+  conflicts, failed saves not reported as saved, deletion, export validation, automatic export
+  (submit vs. draft, rewrite on edit, removal, failure isolation).
+- **`scripts/run_e2e.sh` (29 checks)** against a **real Label Studio server**: creates a
   temporary project, serves synthetic share pages locally, and drives a real browser through
   sign-in → paste link → preview → untick a message → confirm → annotate (automatic labels,
   overlapping highlights, cross-message highlight rejected, role-specific questions) →
-  submit → reload → edit → second participant blocked → export verified. Deletes the
+  submit (automatic export written) → reload → edit (export updated) → second participant
+  blocked → export verified. Deletes the
   project afterwards. Use a test Label Studio instance.
 
 All tests use synthetic conversations only.

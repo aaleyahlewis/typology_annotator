@@ -3,7 +3,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || "playwright");
 const fs = require("fs");
 const path = require("path");
-const { BASE, LS_URL, LS_TOKEN, LS_PROJECT, P1, P1_CODE, P2, P2_CODE, ADMIN_TOKEN, SHARE_ID, OUT = "test-results" } = process.env;
+const { BASE, LS_URL, LS_TOKEN, LS_PROJECT, EXPORT_DIR, P1, P1_CODE, P2, P2_CODE, ADMIN_TOKEN, SHARE_ID, OUT = "test-results" } = process.env;
 fs.mkdirSync(OUT, { recursive: true });
 
 let failures = 0;
@@ -141,6 +141,11 @@ async function ls(pathname, opts = {}) {
     await page.getByText("Saved. You can keep editing").waitFor({ timeout: 15000 }).then(() => true, () => false),
     await page.textContent("#save-status"));
 
+  const autoFile = path.join(EXPORT_DIR, "conversations", `${P1}__${convId}.json`);
+  const auto = fs.existsSync(autoFile) && JSON.parse(fs.readFileSync(autoFile, "utf8"));
+  check("export written automatically on submit", auto && auto.validation.ok && auto.annotations.length === 4,
+    auto ? `annotations=${auto.annotations.length}` : "no file");
+
   // ---- reopen & edit ----
   await page.reload();
   await page.waitForSelector('[class*="phrase--"]'); await page.waitForTimeout(2000);
@@ -156,6 +161,8 @@ async function ls(pathname, opts = {}) {
   await page.getByText("Saved. You can keep editing").waitFor({ timeout: 15000 }).catch(() => {});
   const lsAnn = await ls(`/api/tasks/${task.id}/annotations/`);
   const spans = lsAnn[0].result.filter((r) => r.from_name === "passage_type");
+  const autoAfterEdit = JSON.parse(fs.readFileSync(path.join(EXPORT_DIR, "typology_export.json"), "utf8"));
+  check("automatic export updated after an edit", autoAfterEdit.summary.annotations === 3, `annotations=${autoAfterEdit.summary.annotations}`);
   check("edit (delete a highlight) saved to Label Studio", lsAnn.length === 1 && spans.length === 3, `annotations=${lsAnn.length} spans=${spans.length}`);
 
   // ---- second participant can't see the first participant's conversation ----

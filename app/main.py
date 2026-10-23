@@ -392,7 +392,17 @@ async def save_annotation(cid: str, request: Request, pid=Depends(participant)):
         db.release_annotation_lock(cid)
         log.warning("Label Studio save failed for %s: status %s", cid, e.status)
         raise HTTPException(502, "Not saved: we couldn't reach the annotation server. Your work is still on this page; please try again.")
-    version = db.finish_annotation_save(cid, pid, base, ann_id, bool(body.get("submitted")), regions)
+    submitted = bool(body.get("submitted"))
+    version = db.finish_annotation_save(cid, pid, base, ann_id, submitted, regions)
+    if submitted:
+        # Automatic research export. A failure here never undoes the participant's save;
+        # the research team can always re-export with `manage.py export`.
+        try:
+            export.export_submitted(cid, body["result"])
+        except Exception:
+            log.exception("automatic export failed for %s", cid)
+            with db.connect() as c:
+                db.audit(c, pid, "export_failed", cid)
     return {"ok": True, "version": version}
 
 
@@ -407,6 +417,10 @@ async def delete_conversation(cid: str, pid=Depends(participant)):
         except labelstudio.LabelStudioError:
             raise HTTPException(502, "We couldn't remove it right now. Please try again.")
     db.mark_deleted(cid, pid)
+    try:
+        export.remove_export(db.get_participant_by_id(pid)["study_id"], cid)
+    except OSError:
+        log.exception("could not remove export file for %s", cid)
     return {"ok": True}
 
 

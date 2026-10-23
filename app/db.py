@@ -355,10 +355,17 @@ def finish_annotation_save(cid, pid, base_version, ls_annotation_id, submitted, 
         return base_version + 1
 
 
+_EXPORT_SELECT = """SELECT p.study_id, c.*, a.ls_annotation_id, a.version, a.submitted_at,
+                           a.created_at AS annotation_created_at, a.updated_at AS annotation_updated_at
+                    FROM conversations c JOIN participants p ON p.id = c.participant_id
+                    LEFT JOIN annotations a ON a.conversation_id = c.id"""
+
+
 def export_rows():
     with connect() as c:
-        return c.execute("""SELECT p.study_id, c.*, a.ls_annotation_id, a.version, a.submitted_at,
-                                   a.created_at AS annotation_created_at, a.updated_at AS annotation_updated_at
-                            FROM conversations c JOIN participants p ON p.id = c.participant_id
-                            LEFT JOIN annotations a ON a.conversation_id = c.id
-                            WHERE c.status != 'deleted' ORDER BY c.created_at""").fetchall()
+        return c.execute(_EXPORT_SELECT + " WHERE c.status != 'deleted' ORDER BY c.created_at").fetchall()
+
+
+def export_row(cid):
+    with connect() as c:
+        return c.execute(_EXPORT_SELECT + " WHERE c.id = ? AND c.status != 'deleted'", (cid,)).fetchone()

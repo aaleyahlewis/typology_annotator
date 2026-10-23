@@ -95,6 +95,7 @@ def fake_ls(monkeypatch):
 @pytest.fixture()
 def app_client(tmp_path, monkeypatch, fake_ls):
     object.__setattr__(settings, "db_path", str(tmp_path / "t.sqlite3"))
+    object.__setattr__(settings, "export_dir", str(tmp_path / "exports"))
 
     async def fake_fetch(canonical, transport=None):
         share_id = canonical.rsplit("/", 1)[1]

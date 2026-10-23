@@ -30,7 +30,7 @@ EOF
 echo "Label Studio test project: $PROJECT"
 
 export APP_ENV=test HTTPS_ONLY=0 SESSION_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-export ADMIN_TOKEN=e2e-admin TYPOLOGY_DB="$TMP/e2e.sqlite3"
+export ADMIN_TOKEN=e2e-admin TYPOLOGY_DB="$TMP/e2e.sqlite3" EXPORT_DIR="$TMP/exports"
 export LABEL_STUDIO_URL="$LS_URL" LABEL_STUDIO_API_KEY="$LS_TOKEN" LABEL_STUDIO_PROJECT_ID="$PROJECT"
 export TEST_SHARE_ORIGIN="http://127.0.0.1:$SHARE_PORT"
 P1_CODE=$(.venv/bin/python scripts/manage.py add-participant E2E01 | awk '/Access code/ {print $3}')
@@ -41,6 +41,6 @@ python3 tests/e2e/share_server.py $SHARE_PORT & SHARE=$!
 .venv/bin/uvicorn app.main:app --port $APP_PORT >"$TMP/app.log" 2>&1 & APP=$!
 for _ in $(seq 50); do curl -s -o /dev/null --noproxy localhost http://localhost:$APP_PORT/ && break; sleep 0.2; done
 
-BASE=http://localhost:$APP_PORT LS_URL="$LS_URL" LS_TOKEN="$LS_TOKEN" LS_PROJECT="$PROJECT" ADMIN_TOKEN=e2e-admin \
+BASE=http://localhost:$APP_PORT LS_URL="$LS_URL" LS_TOKEN="$LS_TOKEN" LS_PROJECT="$PROJECT" ADMIN_TOKEN=e2e-admin EXPORT_DIR="$EXPORT_DIR" \
   P1=E2E01 P1_CODE="$P1_CODE" P2=E2E02 P2_CODE="$P2_CODE" SHARE_ID=6729a1b2-0000-4000-8000-123456789abc \
   OUT=test-results NO_PROXY=localhost,127.0.0.1 node tests/e2e/flow.cjs || { echo "--- app log (errors) ---"; grep -v " 200 OK\| 202 Accepted\|^INFO:     Started\|^INFO:     Waiting\|^INFO:     Application\|^INFO:     Uvicorn" "$TMP/app.log" | tail -30; exit 1; }

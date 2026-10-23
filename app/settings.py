@@ -19,6 +19,8 @@ class Settings:
     admin_token: str = field(default_factory=lambda: os.environ.get("ADMIN_TOKEN", ""))
     labeling_config_path: Path = ROOT / "config" / "labeling_config.xml"
     schema_version: str = field(default_factory=lambda: os.environ.get("SCHEMA_VERSION", "1.0"))
+    # Where submitted conversations are exported automatically ("" turns it off).
+    export_dir: str = field(default_factory=lambda: os.environ.get("EXPORT_DIR", str(ROOT / "data" / "exports")))
 
     # Label Studio
     ls_url: str = field(default_factory=lambda: os.environ.get("LABEL_STUDIO_URL", "").rstrip("/"))

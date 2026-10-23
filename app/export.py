@@ -8,11 +8,19 @@ Every question in a highlight's panel appears in `answers`; unanswered ones are 
 Problems are reported in `validation.issues`, never silently fixed.
 """
 import json
+import logging
+import os
+import re
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
 
 from . import annotations, db, labeling_config, labelstudio
 from .settings import settings
 
 EXPORT_SCHEMA = "typology-export-1.0"
+COMBINED_NAME = "typology_export.json"
+log = logging.getLogger("typology")
 
 
 def _answer(r):
@@ -126,3 +134,80 @@ async def build_export(client=None):
             "conversations_with_issues": [c["conversation_id"] for c in conversations if not c["validation"]["ok"]],
         },
     }
+
+
+# ---------- automatic export when a participant submits ----------
+#
+# EXPORT_DIR/conversations/<participant>__<conversation>.json   one file per submitted conversation
+# EXPORT_DIR/typology_export.json                              all of them, same format as manage.py export
+#
+# Files are written atomically with owner-only permissions. Removing a conversation removes its file.
+
+def _safe(name):
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", name)[:120]
+
+
+def _write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
+def conversation_file(export_dir, study_id, conversation_id):
+    return Path(export_dir) / "conversations" / f"{_safe(study_id)}__{_safe(conversation_id)}.json"
+
+
+def rebuild_combined(export_dir):
+    folder = Path(export_dir) / "conversations"
+    conversations = []
+    for f in sorted(folder.glob("*.json")) if folder.exists() else []:
+        try:
+            conversations.append(json.loads(f.read_text(encoding="utf-8")))
+        except ValueError:
+            log.error("unreadable export file %s", f.name)
+    conversations.sort(key=lambda c: c.get("imported_at") or "")
+    _write_json(Path(export_dir) / COMBINED_NAME, {
+        "export_schema": EXPORT_SCHEMA,
+        "schema_version": settings.schema_version,
+        "label_config_sha256": labeling_config.load().sha256,
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "conversations": conversations,
+        "summary": {
+            "conversations": len(conversations),
+            "annotations": sum(len(c["annotations"]) for c in conversations),
+            "conversations_with_issues": [c["conversation_id"] for c in conversations if not c["validation"]["ok"]],
+        },
+    })
+
+
+def export_submitted(conversation_id, result):
+    """Write the export for one conversation right after the participant submits it."""
+    export_dir = settings.export_dir
+    if not export_dir:
+        return None
+    row = db.export_row(conversation_id)
+    if row is None or row["status"] != "ready":
+        return None
+    entry = transform(row, result)
+    path = conversation_file(export_dir, row["study_id"], conversation_id)
+    _write_json(path, entry)
+    rebuild_combined(export_dir)
+    return path
+
+
+def remove_export(study_id, conversation_id):
+    export_dir = settings.export_dir
+    if not export_dir:
+        return
+    path = conversation_file(export_dir, study_id, conversation_id)
+    if path.exists():
+        path.unlink()
+        rebuild_combined(export_dir)
