@@ -13,17 +13,31 @@
   </div>
   <main class="page">
     <h1>Your conversations</h1>
-    <p class="lead">Add a ChatGPT conversation you'd like to annotate, then open it to start.</p>
+    <p class="lead">Add a ChatGPT conversation you'd like to annotate. Only you and the research team can see what you add.</p>
+
+    <section class="card" aria-labelledby="link-h">
+      <h2 id="link-h" style="margin-top:0">Add a conversation</h2>
+      <ol class="muted steps">
+        <li>In ChatGPT, open the conversation and choose <strong>Share</strong>, then <strong>Create link</strong> (or <strong>Copy link</strong>).</li>
+        <li>Paste the link below. You'll see a preview before anything is added.</li>
+      </ol>
+      <form id="link-form" novalidate>
+        <label for="url">ChatGPT share link</label>
+        <input id="url" name="url" type="url" inputmode="url" autocomplete="off" placeholder="https://chatgpt.com/share/…" required aria-describedby="link-status">
+        <div class="row"><button type="submit" id="add-link">Import conversation</button></div>
+        <p id="link-status" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
 
     <section class="card" aria-labelledby="list-h">
       <h2 id="list-h" style="margin-top:0">Added conversations</h2>
-      <ul id="tasks" class="plain"></ul>
+      <ul id="list" class="plain"></ul>
       <p id="empty" class="muted" hidden>You haven't added a conversation yet.</p>
     </section>
 
-    <section class="card" aria-labelledby="upload-h">
-      <h2 id="upload-h" style="margin-top:0">Add from your ChatGPT export</h2>
-      <p class="muted">In ChatGPT go to Settings → Data controls → Export data. Choose the .zip you receive by email (or the conversations.json inside it). Your file stays on this computer: only the conversation you pick is sent to the study.</p>
+    <details class="card">
+      <summary><strong>Link not working? Use your ChatGPT export file instead</strong></summary>
+      <p class="muted">In ChatGPT go to Settings → Data controls → Export data. Choose the .zip you receive by email (or the conversations.json inside it). The file stays on this computer: only the conversation you pick is sent, and you'll see a preview first.</p>
       <label for="file">Export file</label>
       <input id="file" type="file" accept=".zip,.json,application/json,application/zip">
       <p id="file-error" class="error" role="alert"></p>
@@ -31,18 +45,9 @@
         <label for="search">Find a conversation</label>
         <input id="search" type="text" placeholder="Type part of the title">
         <fieldset class="picker" id="choices" style="margin-top:8px"><legend class="muted">Choose one conversation</legend></fieldset>
-        <div class="row"><button id="add" disabled>Add this conversation</button></div>
+        <div class="row"><button id="add-file" disabled>Preview this conversation</button></div>
       </div>
-    </section>
-
-    <section class="card" aria-labelledby="link-h" id="link-section">
-      <h2 id="link-h" style="margin-top:0">Or add from a share link</h2>
-      <p class="muted">In ChatGPT open the conversation, choose Share → Create link, and paste it here. After it's added, you can delete the link in ChatGPT (Settings → Data controls → Shared links).</p>
-      <label for="url">Share link</label>
-      <input id="url" type="url" placeholder="https://chatgpt.com/share/...">
-      <div class="row"><button id="add-link">Add from link</button></div>
-      <p id="link-status" class="status" role="status"></p>
-    </section>
+    </details>
   </main>
   <script type="module" src="/static/conversations.js"></script>
 </body>

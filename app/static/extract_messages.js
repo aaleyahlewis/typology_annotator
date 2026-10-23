@@ -1,5 +1,5 @@
 // CHATGPT_CONVERSATION_IMPORT: find user/assistant messages on a rendered ChatGPT page.
-// Shared by tools/share_link_to_labelstudio.js (manual) and app/share_link.py (server).
+// Shared by tools/share_link_to_labelstudio.js (manual) and app/extract.py (browser fallback).
 (() => {
   const ROLE_AUTHOR = { user: "You", assistant: "ChatGPT" };
   const roleFromLabel = (t) => /^\s*(you said|you)\b/i.test(t) ? "user" : /^\s*chatgpt( said)?\b/i.test(t) ? "assistant" : null;

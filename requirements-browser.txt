@@ -1,0 +1,2 @@
+# Optional: SHARE_LINK_BROWSER_FALLBACK=1 (then run `playwright install chromium`)
+playwright>=1.48

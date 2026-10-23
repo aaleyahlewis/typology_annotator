@@ -46,13 +46,13 @@
 
     <View className="typ-convo">
       <Header value="Your conversation" size="4"/>
-      <Text name="how_to" value="To annotate: 1) choose 'My words' (key 1) or 'AI's words' (key 2), 2) highlight the exact text with your mouse. Choose the label again before each new highlight. To annotate a whole message, highlight all of it. Highlights can overlap."/>
+      <Text name="how_to" value="To annotate: 1) choose 'my text' (key 1) or 'AI's text' (key 2), 2) highlight the exact text with your mouse. Choose the label again before each new highlight. To annotate a whole message, highlight all of it. Highlights can overlap."/>
 
       <!-- TYPOLOGY_SPAN_SELECTION: native text-span regions with start/end message index,
            startOffset/endOffset and the highlighted text -->
       <ParagraphLabels name="passage_type" toName="dialogue" showInline="true">
-        <Label value="My words" hotkey="1" background="#2b5797"/>
-        <Label value="AI's words" hotkey="2" background="#8a3b12"/>
+        <Label value="my text" hotkey="1" background="#2b5797"/>
+        <Label value="AI's text" hotkey="2" background="#8a3b12"/>
       </ParagraphLabels>
 
       <Paragraphs name="dialogue" value="$dialogue" layout="dialogue"
@@ -67,7 +67,7 @@
       </View>
 
       <!-- TYPOLOGY_USER_ANNOTATIONS -->
-      <View visibleWhen="region-selected" whenLabelValue="My words" className="typ-panel">
+      <View visibleWhen="region-selected" whenLabelValue="my text" className="typ-panel">
         <Header value="Your words" size="4"/>
 
         <!-- TYPOLOGY_OPEN_ENDED_RESPONSES -->
@@ -118,8 +118,8 @@
 
       <!-- TYPOLOGY_AI_ANNOTATIONS
            Observable behavior (ai_behavior) is stored separately from interpretation (ai_role). -->
-      <View visibleWhen="region-selected" whenLabelValue="AI's words" className="typ-panel typ-ai">
-        <Header value="AI's words" size="4"/>
+      <View visibleWhen="region-selected" whenLabelValue="AI's text" className="typ-panel typ-ai">
+        <Header value="AI's text" size="4"/>
 
         <Text name="q_ai_behavior" value="What did the AI do?"/>
         <Choices name="ai_behavior" toName="dialogue" perRegion="true" choice="multiple">
@@ -201,7 +201,7 @@
         <Header value="About this conversation (optional)" size="4"/>
         <Text name="q_conversation_accessibility_context" value="What accessibility or communication support were you seeking in this conversation?"/>
         <TextArea name="conversation_accessibility_context" toName="dialogue" rows="3" maxSubmissions="1"/>
-        <Text name="q_conversation_additional_context" value="Is there anything important about your circumstances, intended audience, communication preferences, or experiences that is not visible in the conversation?"/>
+        <Text name="q_conversation_additional_context" value="Is there anything important about your communication preferences or experience that is not visible in the conversation?"/>
         <TextArea name="conversation_additional_context" toName="dialogue" rows="3" maxSubmissions="1"/>
       </View>
 
