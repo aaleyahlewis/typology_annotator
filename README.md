@@ -1,197 +1,290 @@
 # Typology annotator
 
-A self-contained web app for a participant-centered study of identity negotiation in
-AI-mediated accessibility. Participants add one of their own ChatGPT conversations,
-highlight passages in their messages and in ChatGPT's replies, and answer typology
-questions about each highlight. Researchers export the results as JSON for analysis.
+Participant-centered annotation of ChatGPT conversations for the project
+*Context-Sensitive Accessibility and AI-Mediated Identity Negotiation*.
 
-The annotation screen is the open-source Label Studio editor, embedded in this app
-and configured by [`config/labeling_config.xml`](config/labeling_config.xml). There is
-no Label Studio server and no Label Studio API: this app stores everything itself.
+A participant pastes a ChatGPT share link, reviews the extracted conversation,
+approves it, and highlights and annotates passages in Label Studio's annotation
+editor. Tasks and annotations live in Label Studio; researchers export a
+validated dataset that links every highlight to its exact source message and text.
+
+## Architecture
 
 ```
-Participant browser                                   This app (FastAPI + SQLite)
-──────────────────                                    ───────────────────────────
-Sign in (study ID + access code)  ───────────────────▶ /api/login
-Choose ChatGPT export .zip
-  └─ read & converted IN THE BROWSER (chatgpt_export.js)
-  └─ participant picks ONE conversation  ────────────▶ /api/tasks        (only that thread is sent)
-Annotate in embedded Label Studio editor
-  └─ Submit / Update / 30 s autosave  ───────────────▶ /api/tasks/{id}/annotation
-                                                      /admin/export  ◀── researcher (admin token)
+Participant's browser                   This backend (FastAPI)                     Label Studio
+─────────────────────                   ──────────────────────                     ────────────
+Sign in (study ID + code) ───────────▶  session cookie, rate-limited login
+Paste share link ────────────────────▶  validate URL (chatgpt.com/share/<uuid> only)
+                                        fetch page (redirects checked) ──▶ chatgpt.com
+                                        parse embedded data → messages
+Review preview, untick messages ◀────── pending import (not yet in Label Studio)
+Confirm ─────────────────────────────▶  normalize + validate ─────────────────────▶ POST /api/tasks/
+Annotate in the embedded editor ◀─────  task data, checked against canonical copy ◀── GET task / annotation
+Save / Update ───────────────────────▶  validate result against the XML ─────────▶ POST/PATCH annotation
+                                        /admin/export ◀──────────────────────────── annotations
 ```
 
-## What participants see
+**Why participants never get Label Studio accounts.** Open-source Label Studio has no
+per-task permissions: any account in the organization can list every task in a project
+through the UI or API. So participants sign in to this backend only. It holds the Label
+Studio API key, creates and reads tasks on their behalf, and checks ownership on every
+request. Participants' browsers never contact Label Studio (the end-to-end test checks this).
+Researchers use Label Studio normally.
 
-1. **Sign in** with the study ID and access code you gave them.
-2. **Your conversations**: they choose their ChatGPT export file (the `.zip` from
-   ChatGPT → Settings → Data controls → Export data, or the `conversations.json`
-   inside it), search for the conversation, and click **Add this conversation**.
-   The file is read on their computer; only the chosen conversation is uploaded.
-3. **Annotate**: the conversation appears in a ChatGPT-style layout. They press
-   1 (*My words*) or 2 (*AI's words*), highlight text, click the highlight to open
-   the matching questions, and press **Submit** (later **Update**).
-4. They can reopen, edit, or remove their conversations at any time.
+The annotation screen is Label Studio's open-source editor, served by this backend and
+configured by [`config/labeling_config.xml`](config/labeling_config.xml), the same XML the
+Label Studio project uses (`manage.py sync-config` keeps them identical, and the backend
+refuses to create tasks if they differ).
 
-An optional **share-link import** (paste a `chatgpt.com/share/...` link) is included
-but **off by default**. See [Share links](#share-links-experimental).
+### Where data lives
 
-## Run it locally
+| Data | Label Studio | Companion DB (`TYPOLOGY_DB`) | Why |
+|---|---|---|---|
+| Approved conversation (`data.dialogue`) | ✓ task | ✓ canonical record | Canonical copy lets export verify spans against the original text and detects edits in Label Studio |
+| Pending import (before approval) | – | ✓ temporary | Deleted on confirm, cancel, or after `PENDING_IMPORT_TTL_HOURS` (default 24) |
+| Messages the participant unticked | – | ✓ inside canonical `extracted` | Records the extracted vs. approved mapping (spec §6); delete if your protocol requires |
+| Annotation results | ✓ annotation | IDs, version, submitted time | |
+| Participants | – | study ID, scrypt hash of access code | |
+| Audit log | – | actions and IDs, never content | |
 
-Requires Python 3.11+ and Node 18+. Run each line on its own, from inside the
-project folder. (zsh doesn't treat `#` as a comment when you paste, so don't paste
-comments.)
+Removing a conversation deletes its Label Studio task (and annotations) and clears the
+canonical record.
+
+## Participant workflow
+
+1. Sign in with the study ID and access code from the research team.
+2. **Add a conversation**: paste the link from ChatGPT's *Share → Create link*.
+3. **Review**: see the title, message count, any extraction warnings, and every message.
+   Untick messages to leave out. Nothing reaches Label Studio until **Add to my conversations**.
+4. **Annotate**: highlight text in a message. The label (*my text* / *AI's text*) is chosen
+   automatically from the message where the highlight starts; a highlight dragged across
+   two messages is removed with an explanation. Click a highlight to open its questions.
+   All questions are optional.
+5. **Submit** (later **Update**). Drafts are also saved automatically every 20 seconds while
+   there are changes. The page only says "Saved" after the server has written to Label Studio.
+6. Come back any time to edit, delete highlights, or remove the conversation.
+
+If a link can't be read, participants can use their ChatGPT data export instead (read in
+their browser; only the chosen conversation is sent, through the same review step).
+
+## Setup
+
+Requires Python 3.11+, Node 18+, and a Label Studio instance (tested with 1.23.2).
 
 ```bash
 git clone https://github.com/aaleyahlewis/typology_annotator.git
 cd typology_annotator
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install -r requirements.txt
 npm install
-export SESSION_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-export ADMIN_TOKEN=$(python3 -c "import secrets; print(secrets.token_hex(24))")
-.venv/bin/python scripts/manage.py add-participant P01
-.venv/bin/uvicorn app.main:app --port 8765
 ```
 
-`npm install` also copies the annotation editor into `app/static/lsf`.
-`add-participant` prints an access code. Then open http://localhost:8765 and sign in
-as `P01` with that code. A fake export to try is in
-[`tests/fixtures/fake_conversations.json`](tests/fixtures/fake_conversations.json).
-Stop the server with Ctrl + C.
+`npm install` copies the editor into `app/static/lsf`.
 
-## Researcher tasks
+### Label Studio
 
-| Task | Command |
-|---|---|
-| Add a participant (prints a one-time access code) | `.venv/bin/python scripts/manage.py add-participant P01` |
-| Reset a forgotten code | `.venv/bin/python scripts/manage.py reset-code P01` |
-| Export everything | `.venv/bin/python scripts/manage.py export typology_export.json` |
-| Export over HTTP | `curl -H "Authorization: Bearer $ADMIN_TOKEN" https://your-host/admin/export -o export.json` |
+1. Create a project for the study (any title). Note its ID from the URL (`/projects/<ID>`).
+2. Create an API key for a researcher service account: *Account & Settings → Personal Access
+   Token* (or a legacy token if your organization enables them).
+3. Run Label Studio with telemetry and outside error reporting turned off, because tasks
+   contain participant conversations:
+   ```bash
+   export SENTRY_DSN="" FRONTEND_SENTRY_DSN="" COLLECT_ANALYTICS=0
+   ```
+4. Only give the research team Label Studio accounts.
 
-Access codes are stored only as scrypt hashes, so they can't be looked up later.
-Send them to participants through your IRB-approved channel.
+### Configuration
 
-## Export format
+Set these environment variables for the backend (for example in a `.env` file loaded by
+your process manager; never commit it):
 
-`TYPOLOGY_DATA_EXPORT` in [`app/export.py`](app/export.py). One entry per conversation:
+| Variable | Required | Meaning |
+|---|---|---|
+| `SESSION_SECRET` | ✓ | 32+ random characters; signs session cookies |
+| `LABEL_STUDIO_URL` | ✓ | e.g. `https://labelstudio.example.edu` |
+| `LABEL_STUDIO_API_KEY` | ✓ | Personal Access Token or legacy token |
+| `LABEL_STUDIO_PROJECT_ID` | ✓ | the study project's ID |
+| `ADMIN_TOKEN` | for HTTP export | bearer token for `/admin/export` |
+| `TYPOLOGY_DB` | | SQLite path (default `data/typology.sqlite3`) |
+| `EXPORT_DIR` | | where submitted conversations are exported automatically (default `data/exports`; empty turns it off) |
+| `SCHEMA_VERSION` | | recorded on every conversation and export (default `1.0`) |
+| `HTTPS_ONLY` | | default `1`: cookies only over HTTPS. `0` only with `APP_ENV=test` |
+| `SHARE_LINK_BROWSER_FALLBACK` | | `1` to read pages in headless Chromium when they contain no embedded data (needs `pip install -r requirements-browser.txt` and `playwright install chromium`) |
+| `IMPORT_RATE_PER_HOUR` | | per participant (default 20) |
+| `PENDING_IMPORT_TTL_HOURS` | | unconfirmed imports are discarded after this (default 24) |
+
+Generate a secret with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+The server refuses to start if required settings are missing.
+
+### Run
+
+```bash
+.venv/bin/python scripts/manage.py sync-config
+.venv/bin/python scripts/manage.py check
+.venv/bin/python scripts/manage.py add-participant P01
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765
+```
+
+Put it behind HTTPS (Caddy, nginx, or your institution's platform). Run a single process
+(`--workers 1`); imports run in the background inside that process.
+
+## Researcher commands
+
+```bash
+.venv/bin/python scripts/manage.py add-participant P01
+.venv/bin/python scripts/manage.py reset-code P01
+.venv/bin/python scripts/manage.py disable P01
+.venv/bin/python scripts/manage.py enable P01
+.venv/bin/python scripts/manage.py sync-config
+.venv/bin/python scripts/manage.py check
+.venv/bin/python scripts/manage.py export typology_export.json
+.venv/bin/python scripts/manage.py expire-imports
+```
+
+- `add-participant` prints a one-time access code; only a hash is stored. `reset-code`
+  also signs the participant out everywhere.
+- `sync-config` copies `config/labeling_config.xml` into the Label Studio project. Run it
+  after every XML change; the backend won't create tasks while they differ.
+- `check` verifies settings, Label Studio access and that the configs match.
+- `export` writes the research export (file permissions 600) and lists conversations
+  that need review.
+
+## Research export
+
+### Automatic (after each participant submits)
+
+When a participant clicks **Submit**, or **Update** after editing, the backend writes the
+export for that conversation, with no researcher action needed:
+
+```
+EXPORT_DIR/
+  typology_export.json                  every submitted conversation, rebuilt on each submit
+  conversations/P01__conv_….json        one file per conversation (participant__conversation)
+```
+
+- Only submitted work is exported; autosaved drafts are not. If the participant edits and
+  presses **Update** again, their file and the combined file are rewritten.
+- Removing a conversation removes its file and updates the combined file.
+- Files are written atomically (never half-written) and readable only by the server's user (600).
+- An export problem (for example a full disk) never undoes the participant's save; it's
+  logged and recorded in the audit log, and `manage.py export` regenerates everything.
+- Put `EXPORT_DIR` on IRB-approved, backed-up storage, or point it at a synced research folder.
+
+### On demand
+
+`manage.py export` or `GET /admin/export` with `Authorization: Bearer $ADMIN_TOKEN`
+(see [`app/export.py`](app/export.py), marker `TYPOLOGY_DATA_EXPORT`). One entry per conversation:
 
 ```json
 {
   "participant_id": "P01",
-  "conversation_id": "68a1f2c3-...",
-  "title": "Email to my boss",
-  "source": "export_file",
-  "codebook_version": "typology-v1",
-  "submitted": true,
-  "conversation_context": { "conversation_accessibility_context": ["Help writing to my manager"] },
-  "spans": [
-    {
-      "annotation_id": "P-Yob6Jh-W",
-      "message_id": "msg-1", "message_index": 0, "role": "user", "label": "My words",
-      "selected_text": "I come across as blunt",
-      "start_char": 302, "end_char": 324,
-      "start_offset_utf16": 302, "end_offset_utf16": 324,
-      "label_matches_role": true,
-      "answers": {
-        "user_why": ["Professional expectations; people call me blunt"],
-        "user_how_strategy": ["Adjusting tone or communication style"]
-      }
-    }
-  ],
-  "messages": [ { "message_id": "msg-1", "index": 0, "role": "user", "text": "..." } ],
-  "label_studio_result": [ "...the editor's raw result, kept for reference..." ]
+  "conversation_id": "conv_…",
+  "label_studio_task_id": 12,
+  "label_studio_annotation_id": 40,
+  "title": "Email to my manager",
+  "source": "share_link",
+  "extraction_method": "structured",
+  "extraction_warnings": [{"code": "branches_omitted", "message": "…"}],
+  "excluded_source_indexes": [2],
+  "schema_version": "1.0",
+  "label_config_sha256": "5c84c8…",
+  "submitted_at": "2026-10-23T18:02:11+00:00",
+  "conversation_context": {"conversation_accessibility_context": "Writing to my manager",
+                           "conversation_additional_context": null},
+  "annotations": [{
+    "annotation_id": 40, "region_id": "6EEy1r0EzM",
+    "message_id": "00000000-0000-0000-0000-000000000001", "message_role": "user", "message_index": 0,
+    "label": "my text",
+    "span": {"start": 36, "end": 59, "text": "neurodivergent 🙂 to get", "start_utf16": 36, "end_utf16": 60},
+    "answers": {"user_why": "People at work call me blunt",
+                "user_how_strategy": ["Adjusting tone or communication style"],
+                "user_accessibility_goal": null, "…": null}
+  }],
+  "messages": [{"message_id": "…", "index": 0, "source_index": 0, "role": "user", "text": "…"}],
+  "validation": {"ok": true, "issues": []}
 }
 ```
 
-- `start_char`/`end_char` are Python string positions: `messages[i]["text"][start_char:end_char]`
-  gives the highlighted text. The `*_utf16` values are the editor's own positions
-  (they differ only after emoji and other characters outside the Basic Multilingual Plane).
-- `label_matches_role` is `false` when a participant chose *My words* for an AI
-  message or the reverse. The true role is always in `role`.
-- Answer field names match the XML (`user_accessibility_goal`, `ai_role`, ...).
-  Unanswered questions are simply absent.
+- `messages[i]["text"][span.start:span.end] == span.text` in Python (code point positions).
+  `start_utf16`/`end_utf16` are Label Studio's own JavaScript positions; they differ after emoji.
+- Every question in a highlight's panel is listed; unanswered ones are `null`. Nothing is inferred.
+- `validation.issues` flags, per highlight: `message_not_found`, `text_mismatch`,
+  `spans_multiple_messages`, `label_role_mismatch`, `answers_without_highlight`,
+  `answer_for_other_panel:<field>`. These can only arise if results are edited outside
+  this app (e.g. in Label Studio's UI); the app rejects them on save.
 
-## Project layout
+## Security and privacy
 
-```
-app/
-  main.py            API, sessions, security headers, pages
-  db.py              SQLite schema and queries
-  validate.py        checks on uploaded conversations and results (TYPOLOGY_ANNOTATION_VALIDATION)
-  export.py          research export (TYPOLOGY_DATA_EXPORT)
-  share_link.py      optional server-side share-link reader (off by default)
-  static/
-    chatgpt_export.js  in-browser ChatGPT export reader (CHATGPT_CONVERSATION_IMPORT)
-    extract_messages.js  finds messages on a ChatGPT page (used by share-link import)
-    annotate.js        embeds the Label Studio editor and saves results
-    conversations.*    add / list / remove conversations
-    index.html, login.js, api.js, app.css
-config/labeling_config.xml   the annotation interface (TYPOLOGY_* markers inside)
-scripts/manage.py            researcher CLI
-scripts/copy_editor.cjs      copies the editor build into app/static/lsf on npm install
-tools/                       standalone converters (no app needed): Python export converter,
-                             validator, and the browser-console share-page script
-tests/test_api.py            server tests (pytest)
-tests/e2e/flow.cjs           full participant flow in a real browser (Playwright)
-```
+- **Isolation**: every query is scoped to the signed-in participant; Label Studio task IDs never
+  come from the browser. Other participants' conversations return 404 (tested).
+- **Sign-in**: scrypt-hashed codes, lockout after 8 failures per study ID (30 per IP) for
+  15 minutes, sessions expire after 8 hours and end when a code is reset or the participant
+  is disabled.
+- **CSRF**: `SameSite=Strict` cookies, JSON-only writes, and cross-origin `Origin` rejected.
+- **Share-link fetching**: only `https://chatgpt.com/share/<uuid>` (or `chat.openai.com`);
+  every redirect is checked against the same allow-list before it's followed; 25 MB and
+  20 s limits; no cookies or logins; an honest User-Agent. The browser fallback blocks all
+  requests except chatgpt.com and its asset host.
+- **Validation**: conversations are checked before task creation (spec §5), and annotation
+  results are checked against the XML before saving: highlights must lie inside one message
+  and match its text, labels must match the message's author, answers must belong to that
+  highlight's panel and use the XML's options.
+- **Integrity**: if a Label Studio task's text no longer matches the canonical record, the
+  conversation won't open (logged for the research team).
+- **Headers**: strict Content Security Policy (no third-party scripts or connections),
+  `X-Frame-Options: DENY`, `no-store` caching, HSTS when `HTTPS_ONLY=1`.
+- **Logs** contain IDs and status codes only, never message text or answers.
+- **No LLM** is used anywhere in extraction or annotation.
 
 ## Tests
 
 ```bash
+.venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
-scripts/run_e2e.sh
+LS_URL=http://localhost:8080 LS_TOKEN=<legacy token> scripts/run_e2e.sh
 ```
 
-The first runs the server tests (auth, isolation, validation, export). The second starts a
-throwaway server and runs the browser flow.
+- **pytest (103 tests)** with an in-memory Label Studio: URL allow-list and redirect blocking,
+  both page formats, text preservation (whitespace, code, emoji, Arabic, Chinese), branch and
+  hidden-message handling, incomplete-extraction warnings, normalization and validation,
+  annotation-result validation, sign-in and lockout, CSRF, participant isolation, duplicate
+  and idempotent imports, Label Studio failures and retry without duplicate tasks, save
+  conflicts, failed saves not reported as saved, deletion, export validation, automatic export
+  (submit vs. draft, rewrite on edit, removal, failure isolation).
+- **`scripts/run_e2e.sh` (29 checks)** against a **real Label Studio server**: creates a
+  temporary project, serves synthetic share pages locally, and drives a real browser through
+  sign-in → paste link → preview → untick a message → confirm → annotate (automatic labels,
+  overlapping highlights, cross-message highlight rejected, role-specific questions) →
+  submit (automatic export written) → reload → edit (export updated) → second participant
+  blocked → export verified. Deletes the
+  project afterwards. Use a test Label Studio instance.
 
-The browser test signs in, uploads an export zip, adds a conversation, checks the
-ChatGPT styling, checks that clicking a message creates nothing, makes user, AI and
-overlapping highlights, checks the right questions appear for each, answers questions,
-submits, reloads, and verifies the export (message IDs, offsets, answers, conversation-level
-answers). Screenshots land in `test-results/`.
-
-## Share links (experimental)
-
-`ENABLE_SHARE_LINK_IMPORT=1` adds a "paste a share link" box. The server opens the link in
-headless Chromium (`pip install playwright`) and reads the messages with
-`app/static/extract_messages.js`. Only `https://chatgpt.com/share/<id>` URLs are accepted.
-
-Treat this as a convenience with a fallback, not the main path:
-- ChatGPT may block automated requests from servers, and its page structure changes
-  without notice. When that happens participants are told to upload their export instead.
-- Automated access may conflict with OpenAI's terms. Check with your IRB / legal office.
-- It has been tested only against mock pages, not live chatgpt.com.
-- Remind participants to delete the link afterwards (ChatGPT → Settings → Data controls →
-  Shared links).
-
-## Deploying for a real study
-
-Before participants use it:
-
-- **HTTPS**: run behind a reverse proxy (Caddy, nginx, or your institution's platform) and
-  set `HTTPS_ONLY=1` so session cookies are only sent over HTTPS.
-- **Secrets**: set `SESSION_SECRET` (otherwise everyone is signed out on restart) and
-  `ADMIN_TOKEN`. Never commit them.
-- **Data location**: `TYPOLOGY_DB` points at the SQLite file (default `data/typology.sqlite3`).
-  Put it on encrypted, backed-up storage approved by your IRB. SQLite is fine for one server
-  and a study-sized number of participants.
-- **Retention**: the raw export never reaches the server; only the chosen conversation does.
-  Participants can remove a conversation, which deletes its annotations too.
-- **No outside calls**: pages load nothing from third-party sites and the Content Security
-  Policy blocks requests to other origins.
+All tests use synthetic conversations only.
 
 ## Known limitations
 
-- **Editor version**: the embeddable editor is `label-studio-frontend` 1.7.1 (April 2023), the
-  last standalone build published to npm. The current editor isn't published separately; to
-  upgrade, build it from [HumanSignal/label-studio](https://github.com/HumanSignal/label-studio)
-  (`web/`) and replace `app/static/lsf`. Re-run the browser test afterwards, because the chat
-  styling in the XML relies on the editor's class names.
-- **Label must be re-chosen** before each highlight (press 1 or 2). This is how the editor works.
-- **Written answers** must be saved with **Add** (or Shift + Enter) before submitting.
-- Highlighting is mouse-based; there's no keyboard-only way to select text yet.
-- No password-reset flow for participants: the researcher resets codes with `manage.py`.
-- Message text from a share link is the rendered text (no Markdown); from an export it is the
-  original text.
+- **ChatGPT page format.** chatgpt.com wasn't reachable from the environment this was built
+  in, so the extractor was tested against synthetic pages that follow ChatGPT's known
+  formats (`__NEXT_DATA__` and React Router "turbo-stream"), not live share links. **Before
+  the pilot, import a few real share links of your own** and compare the preview with
+  ChatGPT. If ChatGPT changes its pages, the import fails with a clear message (it never
+  imports silently wrong data); enable `SHARE_LINK_BROWSER_FALLBACK` or use the export-file
+  path while the parser is updated.
+- **Automated access to chatgpt.com** may be blocked by ChatGPT or conflict with OpenAI's
+  terms. Confirm with your IRB / legal office.
+- **Editor version**: the embeddable editor is `label-studio-frontend` 1.7.1 (2023), the last
+  standalone build on npm. It reads and writes the same result format as Label Studio 1.23.2
+  (verified end to end). To upgrade, build the editor from HumanSignal/label-studio `web/`,
+  replace `app/static/lsf`, and re-run the end-to-end test (the chat styling depends on the
+  editor's class names).
+- Highlighting needs a mouse or touch; there's no keyboard-only text selection yet.
+- Written answers must be added with **Add** (or Shift + Enter) before saving; this is how
+  Label Studio's TextArea works.
+- Single server process (SQLite and in-process background imports).
+- Participants reset access codes through the research team (no self-service reset).
+
+## Code markers
+
+`CHATGPT_CONVERSATION_IMPORT` (`app/static/chatgpt_export.js`, `app/static/extract_messages.js`),
+`TYPOLOGY_ANNOTATION_VALIDATION` (`app/annotations.py`), `TYPOLOGY_DATA_EXPORT` (`app/export.py`),
+and the `TYPOLOGY_*` markers in `config/labeling_config.xml`.

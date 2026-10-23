@@ -52,25 +52,23 @@ function messageText(msg) {
   if (content.content_type && !["text", "multimodal_text"].includes(content.content_type)) return "";
   return (content.parts || [])
     .map((p) => (typeof p === "string" ? p : p && p.content_type === "image_asset_pointer" ? "[image]" : ""))
-    .filter(Boolean).join("\n").trim();
+    .filter(Boolean).join("\n");  // not trimmed: original text is preserved
 }
 
 export function toConversation(conv) {
   // Walk from current_node to the root so edited/regenerated branches are dropped.
   const chain = [];
-  for (let id = conv.current_node; id; id = conv.mapping[id]?.parent) chain.unshift(conv.mapping[id]);
-  const dialogue = [];
-  let last = 0;
+  for (let id = conv.current_node; id && conv.mapping[id]; id = conv.mapping[id].parent) chain.unshift(conv.mapping[id]);
+  const messages = [];
   for (const node of chain) {
     const msg = node && node.message;
     if (!msg) continue;
     const role = msg.author && msg.author.role;
     if (!KEEP_ROLES.has(role) || (msg.metadata && msg.metadata.is_visually_hidden_from_conversation)) continue;
+    if (role === "assistant" && msg.recipient && msg.recipient !== "all") continue;
     const text = messageText(msg);
-    if (!text) continue;
-    const ms = Math.max(Math.round((msg.create_time || conv.create_time || 0) * 1000), last + 1);
-    last = ms;
-    dialogue.push({ message_id: msg.id, index: dialogue.length, role, text, createdAt: ms });
+    if (!text.trim()) continue;
+    messages.push({ source_id: msg.id, role, text });
   }
-  return { conversation_id: conv.conversation_id || conv.id, title: conv.title, dialogue };
+  return { conversation_id: conv.conversation_id || conv.id, title: conv.title, messages };
 }

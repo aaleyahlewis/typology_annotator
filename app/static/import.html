@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Conversation</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <a href="/conversations">← Your conversations</a>
+  </div>
+  <main class="page">
+    <h1 id="heading">Reading your conversation…</h1>
+    <p id="status" class="lead" role="status" aria-live="polite">This usually takes a few seconds.</p>
+
+    <section id="failed" class="card" hidden>
+      <p id="error" class="error" role="alert"></p>
+      <div class="row"><a class="button" href="/conversations">Try another link</a></div>
+    </section>
+
+    <section id="review" hidden>
+      <div id="warnings" class="card warning" hidden>
+        <h2 style="margin-top:0">Please check this conversation</h2>
+        <ul id="warning-list"></ul>
+      </div>
+      <p class="muted">Nothing has been added to the study yet. Check that this is the right conversation. Untick any message you'd rather not include; it won't be stored or shown to the research team.</p>
+      <div class="row" style="margin-bottom:12px">
+        <button id="confirm-top">Add to my conversations</button>
+        <button id="cancel-top" class="secondary">Cancel</button>
+      </div>
+      <ol id="messages" class="preview" aria-label="Messages in this conversation"></ol>
+      <p id="count" class="status" aria-live="polite"></p>
+      <div class="row">
+        <button id="confirm">Add to my conversations</button>
+        <button id="cancel" class="secondary">Cancel</button>
+      </div>
+      <p id="confirm-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script type="module" src="/static/import.js"></script>
+</body>
+</html>
